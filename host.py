@@ -38,7 +38,7 @@ def answer (conn, addr):
         messages.append((conn, addr, data))
         lock.release()
 
-    messages.append((conn, addr, addr[0].encode('ascii') + b" disconnected!"))
+    messages.append((conn, addr, b'disconnected!))
     print("closing connection to " + str(addr))
     conn.close()
     lock.acquire()
@@ -80,7 +80,7 @@ while not closing:
     for i in messages:
         for j in addrconnected:
             if (i[1] != j[1]):
-                j[0].send(i[1][0].encode('ascii') + b': ' + i[2])
+                j[0].send(b'[' + i[1][0].encode('ascii') + b'] ' + i[2])
 
     messages.clear()
     lock.release()
