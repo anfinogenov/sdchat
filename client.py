@@ -2,26 +2,40 @@
 
 import socket
 import threading
+import sys
 
-sock = socket.socket()
-sock.connect(('192.168.1.6', 9707))
-#sock.connect(('localhost', 9707))
+
+def usage(argv):
+    print("Usage: {} <server_ip> <server_port>".format(argv))
+    sys.exit(1)
+
 
 def send():
-	while True:
-		s = input()
-		if s == ':q':
-			break
-		elif s != ':u':
-			sock.send(s.encode('ascii'))
+    while True:
+        s = input("> ")
+        if s == ':q':
+            break
+        elif s != ':u':
+            sock.send(s.encode('ascii'))
+
 
 def recv():
-	while True:
-		try:
-			data = sock.recv(1024)
-		except OSError:
-			break
-		print(data.decode('utf-8', 'ignore'))
+    while True:
+        try:
+            data = sock.recv(1024)
+        except OSError:
+            break
+        print(data.decode('utf-8', 'ignore') + "\n> ")
+
+
+if len(sys.argv) != 3:
+    usage(sys.argv[0])
+
+server_ip = sys.argv[1]
+server_port = int(sys.argv[2])
+
+sock = socket.socket()
+sock.connect((server_ip, server_port))
 
 t1 = threading.Thread(target=send)
 t2 = threading.Thread(target=recv)
@@ -29,7 +43,7 @@ t2 = threading.Thread(target=recv)
 t1.start()
 t2.start()
 
-print('threads started')
+print('threads started\n> ', end='')
 t1.join()
 print('thread "send" closed')
 
