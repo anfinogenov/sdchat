@@ -25,7 +25,8 @@ def recv():
             data = sock.recv(1024)
         except OSError:
             break
-        print(data.decode('utf-8', 'ignore') + "\n> ")
+        if data != b'':
+            print(data.decode('utf-8', 'ignore') + "\n> ", end='')
 
 
 if len(sys.argv) != 3:
