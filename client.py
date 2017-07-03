@@ -16,7 +16,7 @@ def send():
         if s == ':q':
             break
         elif s != ':u':
-            sock.send(s.encode('ascii'))
+            sock.send(s.encode('ascii', 'replace'))
 
 
 def recv():
