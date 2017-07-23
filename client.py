@@ -6,11 +6,13 @@ import sys
 
 
 def usage(argv):
-    print("Usage: {} <server_ip> <server_port>".format(argv))
+    print("Usage: {} <server_ip> <server_port> [nickname]".format(argv))
     sys.exit(1)
 
 
 def send():
+    if len(sys.argv) >= 4:
+        sock.send(b"|setname " + sys.argv[3][0:20].encode('ascii', 'replace'))
     while True:
         s = input("> ")
         if s == ':q':
@@ -29,7 +31,7 @@ def recv():
             print(data.decode('utf-8', 'ignore') + "\n> ", end='')
 
 
-if len(sys.argv) != 3:
+if len(sys.argv) < 3:
     usage(sys.argv[0])
 
 server_ip = sys.argv[1]
