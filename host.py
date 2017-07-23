@@ -73,6 +73,7 @@ def cmd_parse(conn, addr, message):
     if message.startswith(CMD + b'setname '):
         name = message.split(b' ')[1]
         lock.acquire()
+        messages.append((0, 0, get_sender_name(addr) + b' changed his\her nickname to ' + name + '!'))
         assign_name(conn, addr, name)
         lock.release()
 
