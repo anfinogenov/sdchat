@@ -99,6 +99,10 @@ def get_sender_name(addr):
 
 def answer(conn, addr):
     print("connected: " + str(addr))
+    lock.acquire()
+    messages.append((conn, addr, get_sender_name(addr) + b' connected!'))
+    lock.release()
+
     while True:
         data = conn.recv(1024)
         print(str(addr) + ": " + data.decode('utf-8'))
