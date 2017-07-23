@@ -100,7 +100,7 @@ def get_sender_name(addr):
 def answer(conn, addr):
     print("connected: " + str(addr))
     lock.acquire()
-    messages.append((conn, addr, get_sender_name(addr) + b' connected!'))
+    messages.append((0, 0, get_sender_name(addr) + b' connected!'))
     lock.release()
 
     while True:
