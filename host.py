@@ -134,8 +134,10 @@ def send_messages(messages_array, address_array):
         for address in address_array:
             if entry[1] != address[1]:
                 message = b'[' + get_sender_name(entry[1]) + b'] ' + entry[2]
-                if len(messages_array) > 1:
-                    message += b'\n'
+#                if len(messages_array) > 1:
+#                    message += b'\n'
+# TODO: it does not work properly
+
                 address[0].send(message)
 
 
