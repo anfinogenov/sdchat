@@ -39,7 +39,7 @@ def signal_handler(sig, frame):
 
 def assign_name(conn, addr, name):
     for char in name.decode('utf-8'):
-        if char not in string.printable and char in string.whitespace:
+        if char not in string.printable or char in string.whitespace:
             status = "Error: this name is not valid"
             conn.send(status.encode('utf-8'))
             return
