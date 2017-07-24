@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
 import socket
-import time
+import string
 import threading
 import signal
 import sys
-import os
 
 closing = False
 connected = []
@@ -13,27 +12,42 @@ messages = []
 lock = threading.Lock()
 sock = socket.socket()
 
-#if message starts with that string - it's a command to server, not message
-CMD = b'|'
+CMD = b'|'  # if message starts with that string - it's a command to server, not message
 MAX_NAME_LEN = 20
 
-def signal_handler(signal, frame):
-    print('shutting down host')
-    closing = True
-    try:
-        sock.shutdown(socket.SHUT_RDWR)
-    except:
-        pass
-    sock.close()
-    sys.exit(0)
+
+def signal_handler(sig, frame):
+    if sig == signal.SIGINT:
+        print('\b\b^C catched!\nshutting down host')
+
+        closing = True
+
+        for connection in connected:
+            message = "Server closed the connection."
+            connection[0].send(message.encode('utf-8'))
+            connection[0].close()
+            connected.remove(connection)
+
+        try:
+            sock.shutdown(socket.SHUT_RDWR)
+        except:
+            pass
+
+        sock.close()
+        sys.exit(0)
 
 
-#do when locked
 def assign_name(conn, addr, name):
+    for char in name.decode('utf-8'):
+        if char not in string.printable and char in string.whitespace:
+            status = "Error: this name is not valid"
+            conn.send(status.encode('utf-8'))
+            return
+
     if len(name) > MAX_NAME_LEN:
-        tosend = b"Error: this name is too long. Max length is "
-        tosend += str(MAX_NAME_LEN).encode('ascii') + b".\n"
-        conn.send(tosend)
+        status = "Error: this name is too long. Max length is "
+        status += str(MAX_NAME_LEN) + "."
+        conn.send(status.encode('utf-8'))
         return
 
     name_free = True
@@ -47,6 +61,8 @@ def assign_name(conn, addr, name):
         conn.send(b"Error: this name is already in use.\n")
         return
 
+    messages.append((0, 0, get_sender_name(addr) + b' changed his\her nickname to <' + name + b'>!'))
+
     for i in range(0, len(connected)):
         if connected[i][1] == addr:
             connected[i] = (conn, addr, name)
@@ -56,24 +72,23 @@ def assign_name(conn, addr, name):
 def cmd_parse(conn, addr, message):
     # |help
     if message.startswith(CMD + b'help'):
-        tosend = b"List of availbale commands:\n"
-        tosend += b"-- |list\n"
-        tosend += b"    Print all connected clients.\n"
-        tosend += b"    Name printed if was assigned.\n"
-        tosend += b"\n"
-        tosend += b"-- |help\n"
-        tosend += b"    Print this help.\n"
-        tosend += b"\n"
-        tosend += b"-- |setname <new_name>\n"
-        tosend += b"    Sets a new name for current connection.\n"
-        tosend += b"    Two connections couldn't have same names.\n"
-        conn.send(tosend)
+        tosend =  "List of availbale commands:\n"
+        tosend += "-- |list\n"
+        tosend += "    Print all connected clients.\n"
+        tosend += "    Name printed if was assigned.\n"
+        tosend += "\n"
+        tosend += "-- |help\n"
+        tosend += "    Print this help.\n"
+        tosend += "\n"
+        tosend += "-- |setname <new_name>\n"
+        tosend += "    Sets a new name for current connection.\n"
+        tosend += "    Two connections couldn't have same names.\n"
+        conn.send(tosend.encode('utf-8'))
 
     # |setname <new_name>
     if message.startswith(CMD + b'setname '):
         name = message.split(b' ')[1]
         lock.acquire()
-        messages.append((0, 0, get_sender_name(addr) + b' changed his\her nickname to <' + name + b'>!'))
         assign_name(conn, addr, name)
         lock.release()
 
@@ -94,8 +109,8 @@ def get_sender_name(addr):
         if connection[1] == addr:
             if len(connection) > 2:
                 return connection[2]
-            return connection[1][0].encode('ascii')
-    return b'SERVER'
+            return connection[1][0].encode('utf-8')
+    return 'SERVER'.encode('utf-8')
 
 
 def answer(conn, addr):
@@ -105,8 +120,12 @@ def answer(conn, addr):
     lock.release()
 
     while True:
-        data = conn.recv(1024)
-        print(str(addr) + ": " + data.decode('utf-8'))
+        try:
+            data = conn.recv(1024)
+        except OSError:
+            return
+
+        print(str(addr) + ": " + data.decode('utf-8', 'replace'))
         if not data:
             break
 
@@ -134,38 +153,39 @@ def send_messages(messages_array, address_array):
         for address in address_array:
             if entry[1] != address[1]:
                 message = b'[' + get_sender_name(entry[1]) + b'] ' + entry[2]
-#                if len(messages_array) > 1:
-#                    message += b'\n'
-# TODO: it does not work properly
 
                 address[0].send(message)
 
 
-signal.signal(signal.SIGINT, signal_handler)
+def main():
+    signal.signal(signal.SIGINT, signal_handler)
 
-sock.bind(('', 9707))
-sock.listen(1)
-sock.settimeout(0.5)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(('', 9707))
+    sock.listen(1)
+    sock.settimeout(0.5)
 
-# print(sock.getsockname())
+    while not closing:
+        try:
+            conn, addr = sock.accept()
+        except:
+            pass
+        else:
+            lock.acquire()
+            connected.append((conn, addr))
+            lock.release()
 
-while not closing:
-    try:
-        conn, addr = sock.accept()
-    except:
-        pass
-    else:
+            print('created thread for host ' + str(addr))
+            threading.Thread(target=answer, args=(conn, addr)).start()
+
         lock.acquire()
-        connected.append((conn, addr))
+        send_messages(messages, connected)
+        messages.clear()
         lock.release()
 
-        print('created thread for host ' + str(addr))
-        threading.Thread(target=answer, args=(conn, addr)).start()
+    sock.shutdown(socket.SHUT_RDWR)
+    sock.close()
 
-    lock.acquire()
-    send_messages(messages, connected)
-    messages.clear()
-    lock.release()
 
-sock.shutdown(socket.SHUT_RDWR)
-sock.close()
+if __name__ == '__main__' and sys.platform in ['linux', 'darwin']:
+    main()

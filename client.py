@@ -17,8 +17,8 @@ def send():
         s = input("> ")
         if s == ':q':
             break
-        elif s != ':u':
-            sock.send(s.encode('ascii', 'replace'))
+        else:
+            sock.send(s.encode('utf-8'))
 
 
 def recv():
@@ -50,7 +50,6 @@ print('threads started\n> ', end='')
 t1.join()
 print('thread "send" closed')
 
-sock.shutdown(socket.SHUT_RDWR)
 sock.close()
 print('socket closed')
 t2.join()
